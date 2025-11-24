@@ -79,19 +79,6 @@
                     </div>
                 </div>
 
-                <div>
-                    <label for="clientName" class="block text-sm font-medium text-gray-300">Client Name</label>
-                    <input type="text" id="clientName" name="clientName"
-                           class="mt-1 block w-full bg-gray-900 border border-gray-700 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                           placeholder="e.g., Mother's Earth NL">
-                </div>
-
-                <div>
-                    <label for="website" class="block text-sm font-medium text-gray-300">Website</label>
-                    <input type="url" id="website" name="website"
-                           class="mt-1 block w-full bg-gray-900 border border-gray-700 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                           placeholder="e.g., https://nl.mothersearth.com">
-                </div>
 
                 <!-- SUBMIT BUTTON -->
                 <div class="pt-4">
@@ -151,8 +138,7 @@
                     targetKeyword: formData.get('targetKeyword'),
                     location: formData.get('location'),
                     language: formData.get('language'),
-                    clientName: formData.get('clientName'),
-                    website: formData.get('website'),
+
                 };
 
                 try {
@@ -191,5 +177,6 @@
 </body>
 
 </html>
+
 
 
