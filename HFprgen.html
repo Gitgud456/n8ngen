@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-900">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content Workflow Launcher</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                },
+            },
+        };
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .loader {
+            border-top-color: #3498db;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="h-full text-gray-100">
+    <div class="flex flex-col items-center justify-center min-h-full p-4 sm:p-6 lg:p-8">
+        <div class="w-full max-w-2xl">
+            <h1 class="text-3xl font-bold text-center text-white mb-6">
+                Content Workflow Launcher
+            </h1>
+            <p class="text-center text-gray-400 mb-8">
+                Trigger your "Long form Content Generator" n8n workflow with custom inputs.
+            </p>
+
+            <!-- IMPORTANT SETUP INSTRUCTIONS -->
+            <div id="setup-instructions" class="bg-yellow-900/30 border border-yellow-600 text-yellow-200 p-4 rounded-lg mb-8">
+                <h3 class="font-bold text-lg mb-2">How to Use This Page</h3>
+                <ol class="list-decimal list-inside space-y-2">
+                    <li>
+                        Input your data on the following forms and click<strong> generate content.</strong>
+                        if there's any issues please Contact me.
+                    </li>
+                   
+                </ol>
+            </div>
+
+            <!-- WORKFLOW LAUNCHER FORM -->
+            <form id="workflow-form" class="bg-gray-800 p-6 sm:p-8 rounded-xl shadow-2xl space-y-6">
+                
+                <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-3">Workflow Inputs</h2>
+
+                <div>
+                    <label for="targetKeyword" class="block text-sm font-medium text-gray-300">Target Keyword</label>
+                    <input type="text" id="targetKeyword" name="targetKeyword"
+                           class="mt-1 block w-full bg-gray-900 border border-gray-700 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="e.g., Laundry Sheets">
+                           
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                        <label for="location" class="block text-sm font-medium text-gray-300">Location</label>
+                        <input type="text" id="location" name="location"
+                               class="mt-1 block w-full bg-gray-900 border border-gray-700 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="e.g., Netherlands">   
+                    </div>
+                    <div>
+                        <label for="language" class="block text-sm font-medium text-gray-300">Language</label>
+                        <input type="text" id="language" name="language"
+                               class="mt-1 block w-full bg-gray-900 border border-gray-700 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="e.g., English">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="TargetPRName" class="block text-sm font-medium text-gray-300">Target PR Name</label>
+                    <input type="text" id="TargetPRName" name="TargetPRName"
+                           class="mt-1 block w-full bg-gray-900 border border-gray-700 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="e.g., Huislijn">
+                </div>
+
+                <div>
+                    <label for="Targetwebsite" class="block text-sm font-medium text-gray-300">Target PR Website</label>
+                    <input type="url" id="Targetwebsite" name="Targetwebsite"
+                           class="mt-1 block w-full bg-gray-900 border border-gray-700 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="e.g., https://www.huislijn.nl/">
+                </div>
+
+                <!-- SUBMIT BUTTON -->
+                <div class="pt-4">
+                    <button type="submit" id="submit-button"
+                            class="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-blue-500 transition-all duration-150">
+                        <span id="button-text">Generate Content</span>
+                        <div id="button-loader" class="hidden loader w-5 h-5 border-2 border-gray-300 rounded-full ml-3"></div>
+                    </button>
+                </div>
+            </form>
+
+            <!-- RESPONSE MESSAGE -->
+            <div id="response-message" class="mt-6 text-center"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('workflow-form');
+            const submitButton = document.getElementById('submit-button');
+            const buttonText = document.getElementById('button-text');
+            const buttonLoader = document.getElementById('button-loader');
+            const responseMessage = document.getElementById('response-message');
+            const setupInstructions = document.getElementById('setup-instructions');
+
+            // --- THIS IS THE URL YOU MUST REPLACE ---
+            // 1. Get this from your n8n Webhook node.
+            // 2. It will look like: https://n8n.your-domain.com/webhook/123-abc...
+            const n8nWebhookUrl = 'https://n8n.srv975478.hstgr.cloud/webhook/HFPRGen';
+            // ----------------------------------------
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                // Clear previous messages
+                responseMessage.textContent = '';
+                responseMessage.className = 'mt-6 text-center';
+
+                // Check if the webhook URL has been set
+                if (n8nWebhookUrl === '') {
+                    responseMessage.textContent = 'Error: Please update the n8nWebhookUrl variable in index.html first.';
+                    responseMessage.className = 'mt-6 text-center text-red-400 p-3 bg-red-900/30 rounded-md';
+                    setupInstructions.classList.remove('border-yellow-600', 'text-yellow-200', 'bg-yellow-900/30');
+                    setupInstructions.classList.add('border-red-500', 'text-red-300', 'bg-red-900/40');
+                    return;
+                }
+
+                // Set loading state
+                buttonText.textContent = 'Triggering Workflow...';
+                buttonLoader.classList.remove('hidden');
+                submitButton.disabled = true;
+
+                // Collect form data
+                const formData = new FormData(form);
+                const data = {
+                    targetKeyword: formData.get('targetKeyword'),
+                    location: formData.get('location'),
+                    language: formData.get('language'),
+                    TargetPRName: formData.get('TargetPRName'),
+                    Targetwebsite: formData.get('Targetwebsite'),
+                };
+
+                try {
+                    const response = await fetch(n8nWebhookUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data),
+                    });
+
+                    // n8n Webhooks usually respond immediately with 200 OK
+                    // even as the workflow continues to run in the background.
+                    if (response.ok) {
+                        responseMessage.textContent = 'Workflow triggered successfully! Check your n8n instance for progress.';
+                        responseMessage.className = 'mt-6 text-center text-green-400 p-3 bg-green-900/30 rounded-md';
+                        form.reset();
+                    } else {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || 'Workflow trigger failed');
+                    }
+
+                } catch (error) {
+                    console.error('Fetch Error:', error);
+                    responseMessage.textContent = `Error: ${error.message}. Could not trigger workflow.`;
+                    responseMessage.className = 'mt-6 text-center text-red-400 p-3 bg-red-900/30 rounded-md';
+                } finally {
+                    // Reset button state
+                    buttonText.textContent = 'Generate Content';
+                    buttonLoader.classList.add('hidden');
+                    submitButton.disabled = false;
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
