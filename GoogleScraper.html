@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google SERP Scraper Launcher</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Load Lucide icons for use in React components -->
+    <script src="https://unpkg.com/lucide@latest"></script> 
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .glass-panel {
+            /* Mimics a modern, slightly transparent look */
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        }
+        /* Tailwind Utility classes for background animation, used in the React component */
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob {
+            animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+            animation-delay: 2s;
+        }
+        .animation-delay-4000 {
+            animation-delay: 4s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // *** HARDCODED WEBHOOK URL IS DEFINED HERE ***
+        // Replace "YOUR_N8N_WEBHOOK_URL_HERE" with your actual n8n Production Webhook URL.
+        const WEBHOOK_URL_STATIC = "https://n8n.srv975478.hstgr.cloud/webhook/GoogleWebscraper";
+
+        const App = () => {
+            // The webhookUrl is now a constant defined outside the component
+            const webhookUrl = WEBHOOK_URL_STATIC;
+            
+            // State for the user input data
+            const [formData, setFormData] = useState({
+                targetKeyword: '',
+                location: 'United States',
+                language: 'en'
+            });
+            
+            // State for UI feedback
+            const [status, setStatus] = useState('idle'); // idle, loading, success, error
+            const [statusMessage, setStatusMessage] = useState('');
+
+            // Function to safely check if the webhook URL is the placeholder
+            const isPlaceholderUrl = webhookUrl === "YOUR_N8N_WEBHOOK_URL_HERE" || !webhookUrl;
+
+            const handleInputChange = (e) => {
+                const { name, value } = e.target;
+                setFormData(prev => ({
+                    ...prev,
+                    [name]: value
+                }));
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                
+                if (isPlaceholderUrl) {
+                    setStatus('error');
+                    setStatusMessage('Please update the hardcoded Webhook URL in the code before running the workflow.');
+                    return;
+                }
+
+                setStatus('loading');
+                setStatusMessage('Initializing scraper workflow...');
+
+                // Implement basic exponential backoff for API calls
+                const maxRetries = 3;
+                let attempt = 0;
+
+                while (attempt < maxRetries) {
+                    try {
+                        const response = await fetch(webhookUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(formData)
+                        });
+
+                        if (response.ok) {
+                            setStatus('success');
+                            setStatusMessage('Workflow started successfully! Check your associated outputs (e.g., Google Sheets or Slack).');
+                            // Success, break the loop
+                            return; 
+                        } else {
+                            throw new Error(`Server responded with ${response.status}`);
+                        }
+                    } catch (error) {
+                        attempt++;
+                        if (attempt >= maxRetries) {
+                            console.error('Final attempt failed:', error);
+                            setStatus('error');
+                            setStatusMessage('Failed to trigger workflow after multiple retries. Check the hardcoded webhook URL and n8n status.');
+                            return;
+                        }
+                        // Exponential backoff delay (1s, 2s, 4s)
+                        const delay = Math.pow(2, attempt) * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        // Update message for loading state
+                        setStatusMessage(`Retrying (${attempt}/${maxRetries})...`);
+                    }
+                }
+            };
+
+            // Icons from Lucide (inlined as functions)
+            const Icons = {
+                Settings: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
+                Search: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
+                Globe: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
+                Check: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+                Alert: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>,
+                Send: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            };
+
+            // Optional: A configuration display if the URL is not set, to help the user.
+            const ConfigDisplay = () => (
+                <div className="glass-panel rounded-2xl p-6 mb-6 border-4 border-dashed border-red-400 bg-red-50">
+                    <div className="flex items-center gap-2 mb-2 text-red-800 font-bold">
+                        <Icons.Settings />
+                        <span>Configuration Required</span>
+                    </div>
+                    <p className="text-sm text-red-700">
+                        Please update the Canvas code on the right with your n8n Production Webhook URL.
+                        Find the line <code>const WEBHOOK_URL_STATIC = "";</code> and replace the placeholder value.
+                    </p>
+                    <code className="block bg-red-100 p-2 mt-2 rounded text-xs text-red-800">
+                        // Example: const WEBHOOK_URL_STATIC = "https://your-n8n-instance.com/webhook/123456789";
+                    </code>
+                </div>
+            );
+
+            return (
+                <div className="min-h-screen p-6 md:p-12 flex flex-col items-center justify-center">
+                    
+                    {/* Background decoration */}
+                    <div className="fixed inset-0 -z-10 overflow-hidden">
+                        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
+                        <div className="absolute top-0 right-1/4 w-96 h-96 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+                        <div className="absolute -bottom-32 left-1/3 w-96 h-96 bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
+                    </div>
+
+                    <div className="max-w-2xl w-full">
+                        
+                        {/* Header */}
+                        <div className="text-center mb-10">
+                            <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">SERP Scraper Control</h1>
+                            <p className="text-gray-600">Enter your parameters to launch the n8n scraping workflow.</p>
+                        </div>
+                        
+                        {/* Show configuration instruction if URL is the placeholder */}
+                        {isPlaceholderUrl && <ConfigDisplay />}
+
+                        {/* Main Form Card: Keyword and Location/Language Inputs */}
+                        <div className="glass-panel rounded-2xl p-8">
+                            <form onSubmit={handleSubmit} className="space-y-6">
+                                
+                                <h2 className="text-xl font-bold text-gray-800 mb-4">
+                                    {isPlaceholderUrl ? '2. Scraper Parameters (Locked)' : '1. Scraper Parameters'}
+                                </h2>
+
+                                {/* Keyword Input */}
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                        Target Keyword
+                                    </label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                            <Icons.Search />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            name="targetKeyword"
+                                            required
+                                            value={formData.targetKeyword}
+                                            onChange={handleInputChange}
+                                            placeholder="e.g., best cloud storage solutions"
+                                            className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm"
+                                            disabled={isPlaceholderUrl}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Location Input */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                                            Location (e.g., United States)
+                                        </label>
+                                        <div className="relative">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                                <Icons.Globe />
+                                            </div>
+                                            <input
+                                                type="text"
+                                                name="location"
+                                                required
+                                                value={formData.location}
+                                                onChange={handleInputChange}
+                                                placeholder="United States"
+                                                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm"
+                                                disabled={isPlaceholderUrl}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Language Input */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                                            Language (e.g., English, Dutch, Spanish)
+                                        </label>
+                                        <div className="relative">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 font-mono text-xs">
+                                            
+                                            </div>
+                                            <input
+                                                type="text"
+                                                name="language"
+                                                required
+                                                value={formData.language}
+                                                onChange={handleInputChange}
+                                                placeholder="en"
+                                                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm"
+                                                disabled={isPlaceholderUrl}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Submit Button */}
+                                <button
+                                    type="submit"
+                                    disabled={status === 'loading' || isPlaceholderUrl}
+                                    className={`w-full flex items-center justify-center gap-2 py-4 rounded-xl text-white font-bold text-lg shadow-lg transform transition-all hover:-translate-y-0.5
+                                        ${(status === 'loading' || isPlaceholderUrl)
+                                            ? 'bg-gray-400 cursor-not-allowed' 
+                                            : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 ring-4 ring-blue-500/20'
+                                        }`}
+                                >
+                                    {status === 'loading' ? (
+                                        <>
+                                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            Starting...
+                                        </>
+                                    ) : (
+                                        <>
+                                            Start Scraper <Icons.Send />
+                                        </>
+                                    )}
+                                </button>
+                            </form>
+                        </div>
+
+                        {/* Status Message */}
+                        {statusMessage && (
+                            <div className={`mt-6 p-4 rounded-xl flex items-start gap-3 animate-fade-in
+                                ${status === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : ''}
+                                ${status === 'error' ? 'bg-red-50 text-red-800 border border-red-200' : ''}
+                                ${status === 'loading' ? 'bg-blue-50 text-blue-800 border border-blue-200' : ''}
+                            `}>
+                                <div className="mt-0.5">
+                                    {status === 'success' && <Icons.Check />}
+                                    {status === 'error' && <Icons.Alert />}
+                                    {status === 'loading' && <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>}
+                                </div>
+                                <p className="font-medium">{statusMessage}</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
